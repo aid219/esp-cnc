@@ -8,8 +8,16 @@
 #include <string.h>
 #include "driver/gpio.h"
 
-#define DIR_PIN  GPIO_NUM_18
-#define STEP_PIN GPIO_NUM_19
+#define DIR_PIN_X  GPIO_NUM_18
+#define STEP_PIN_X GPIO_NUM_19
+
+
+#define DIR_PIN_Y  GPIO_NUM_20
+#define STEP_PIN_Y GPIO_NUM_21
+
+
+#define DIR_PIN_Z  GPIO_NUM_22
+#define STEP_PIN_Z GPIO_NUM_23
 
 static const char *TAG = "esp-cnc";
 
@@ -29,97 +37,110 @@ static const httpd_uri_t any = {
 };
 
 static httpd_handle_t server = NULL;
-// static int ws_client_fd = -1;
-// static bool ws_connected = false;
-static int direction = 0;
-static SemaphoreHandle_t ws_mutex = NULL; // Для защиты переменных
 
-// static void clear_ws_client(int fd);
+static int directionX = 0;
+static int directionY = 0;
+static int directionZ = 0;
 
-// void clear_ws_client(int fd) {
-//     xSemaphoreTake(ws_mutex, portMAX_DELAY);
-//     if (ws_client_fd == fd) {
-//         ws_connected = false;
-//         ws_client_fd = -1;
-//     }
-//     xSemaphoreGive(ws_mutex);
-// }
 
-int counter = 0;
 
-// void ws_sender_task(void *pvParameter) {
- 
-    
-//     while (1) {
-//         xSemaphoreTake(ws_mutex, portMAX_DELAY);
-//         bool connected = ws_connected;
-//         int fd = ws_client_fd;
-//         xSemaphoreGive(ws_mutex);
-        
-//         if (connected && fd != -1) {
-//             char data[12];
-//             snprintf(data, sizeof(data), "%d", counter++);
-            
-//             httpd_ws_frame_t ws_pkt = {
-//                 .type = HTTPD_WS_TYPE_TEXT,
-//                 .len = strlen(data),
-//                 .payload = (uint8_t*)data
-//             };
-            
-//             // Попытка отправки
-//             esp_err_t ret = httpd_ws_send_frame_async(server, fd, &ws_pkt);
-//             if (ret != ESP_OK) {
-//                 ESP_LOGW(TAG, "Соединение разорвано (ошибка 0x%x)", ret);
-//                 clear_ws_client(fd);
-//             }
+static int dirX = 0;
+static int dirY = 0;
+static int dirZ = 0;
 
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(1000));
-//     }
-// }
-static int dir = 0;
-void stepper(void *pvParameter){
+void stepperX(void *pvParameter){
     while(1){
-        if(dir != direction){
-            dir = direction;
+        if(dirX != directionX){
+            dirX = directionX;
         }
-        
-        // if (xSemaphoreTake(ws_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-        //     dir = direction;
-        //     xSemaphoreGive(ws_mutex);
-        // } else {
-        //     ESP_LOGW(TAG, "Семафор занят!");
-        //     vTaskDelay(pdMS_TO_TICKS(10));
-        // }
-        if(dir == 0){
+
+        if(dirX == 0){
             vTaskDelay(pdMS_TO_TICKS(10));
+            // ESP_LOGW(TAG, "X стоп!");
             continue;
         }
-        if(dir == 1){
-            ESP_LOGW(TAG, "Направление вперед!");
-            gpio_set_level(DIR_PIN, 1); 
-            gpio_set_level(STEP_PIN, 1);
+        if(dirX == 1){
+            // ESP_LOGW(TAG, "X вперед!");
+            gpio_set_level(DIR_PIN_X, 1); 
+            gpio_set_level(STEP_PIN_X, 1);
             vTaskDelay(pdMS_TO_TICKS(1));
-            gpio_set_level(STEP_PIN, 0);
+            gpio_set_level(STEP_PIN_X, 0);
             vTaskDelay(pdMS_TO_TICKS(1)); 
         }
-        if(dir == 2){
-            ESP_LOGW(TAG, "Направление назад!");
-            gpio_set_level(DIR_PIN, 0);
-            gpio_set_level(STEP_PIN, 1);
+        if(dirX == 2){
+            // ESP_LOGW(TAG, "X назад!");
+            gpio_set_level(DIR_PIN_X, 0);
+            gpio_set_level(STEP_PIN_X, 1);
             vTaskDelay(pdMS_TO_TICKS(1));
-            gpio_set_level(STEP_PIN, 0);
+            gpio_set_level(STEP_PIN_X, 0);
             vTaskDelay(pdMS_TO_TICKS(1)); 
         }
     }
 }
+
+void stepperY(void *pvParameter){
+    while(1){
+        if(dirY != directionY){
+            dirY = directionY;
+        }
+
+        if(dirY == 0){
+            vTaskDelay(pdMS_TO_TICKS(10));
+            // ESP_LOGW(TAG, "X стоп!");
+            continue;
+        }
+        if(dirY == 1){
+            // ESP_LOGW(TAG, "Y вперед!");
+            gpio_set_level(DIR_PIN_Y, 1); 
+            gpio_set_level(STEP_PIN_Y, 1);
+            vTaskDelay(pdMS_TO_TICKS(1));
+            gpio_set_level(STEP_PIN_Y, 0);
+            vTaskDelay(pdMS_TO_TICKS(1)); 
+        }
+        if(dirY == 2){
+            // ESP_LOGW(TAG, "Y назад!");
+            gpio_set_level(DIR_PIN_Y, 0);
+            gpio_set_level(STEP_PIN_Y, 1);
+            vTaskDelay(pdMS_TO_TICKS(1));
+            gpio_set_level(STEP_PIN_Y, 0);
+            vTaskDelay(pdMS_TO_TICKS(1)); 
+        }
+    }
+}
+
+void stepperZ(void *pvParameter){
+    while(1){
+        if(dirZ != directionZ){
+            dirZ = directionZ;
+        }
+
+        if(dirZ == 0){
+            vTaskDelay(pdMS_TO_TICKS(10));
+            // ESP_LOGW(TAG, "X стоп!");
+            continue;
+        }
+        if(dirZ == 1){
+            // ESP_LOGW(TAG, "Z вперед!");
+            gpio_set_level(DIR_PIN_Z, 1); 
+            gpio_set_level(STEP_PIN_Z, 1);
+            vTaskDelay(pdMS_TO_TICKS(1));
+            gpio_set_level(STEP_PIN_Z, 0);
+            vTaskDelay(pdMS_TO_TICKS(1)); 
+        }
+        if(dirZ == 2){
+            // ESP_LOGW(TAG, "Z назад!");
+            gpio_set_level(DIR_PIN_Z, 0);
+            gpio_set_level(STEP_PIN_Z, 1);
+            vTaskDelay(pdMS_TO_TICKS(1));
+            gpio_set_level(STEP_PIN_Z, 0);
+            vTaskDelay(pdMS_TO_TICKS(1)); 
+        }
+    }
+}
+
 static esp_err_t ws_handler(httpd_req_t *req) {
     // Новое соединение
     if (req->method == HTTP_GET) {
-        // xSemaphoreTake(ws_mutex, portMAX_DELAY);
-        // ws_client_fd = httpd_req_to_sockfd(req);
-        // ws_connected = true;
-        // xSemaphoreGive(ws_mutex);
         ESP_LOGI(TAG, "Клиент подключился");
         return ESP_OK;
     }
@@ -130,11 +151,6 @@ static esp_err_t ws_handler(httpd_req_t *req) {
     
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
     if (ret != ESP_OK) {
-        // Клиент отключился — получаем ошибку при чтении
-        // xSemaphoreTake(ws_mutex, portMAX_DELAY);
-        // ws_connected = false;
-        // ws_client_fd = -1;
-        // xSemaphoreGive(ws_mutex);
         ESP_LOGI(TAG, "Клиент отключился");
         return ret;
     }
@@ -147,23 +163,63 @@ static esp_err_t ws_handler(httpd_req_t *req) {
         ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);
         if (ret == ESP_OK && ws_pkt.type == HTTPD_WS_TYPE_TEXT) {
             // Обработка команд
-             if (strcmp((char*)buf, "cmd1") == 0) {
-                ESP_LOGI(TAG, "Команда 1 получена");
+            if (strcmp((char*)buf, "cmd1") == 0) {
+                ESP_LOGI(TAG, "X+ получена");
 
-                direction = 1;
+                directionX = 1;
 
                 }
             if (strcmp((char*)buf, "cmd2") == 0) {
-                ESP_LOGI(TAG, "Команда 2 получена");
+                ESP_LOGI(TAG, "X- получена");
 
-                direction = 2;
+                directionX = 2;
 
 
             }
             if (strcmp((char*)buf, "cmd3") == 0) {
-                ESP_LOGI(TAG, "Команда 3 получена");
+                ESP_LOGI(TAG, "X stop получена");
 
-                direction = 0;
+                directionX = 0;
+
+            }
+            //Y
+            if (strcmp((char*)buf, "cmd4") == 0) {
+                ESP_LOGI(TAG, "Y+ получена");
+
+                directionY = 1;
+
+                }
+            if (strcmp((char*)buf, "cmd5") == 0) {
+                ESP_LOGI(TAG, "Y- получена");
+
+                directionY = 2;
+
+
+            }
+            if (strcmp((char*)buf, "cmd6") == 0) {
+                ESP_LOGI(TAG, "Y stop получена");
+
+                directionY = 0;
+
+            }
+            //Z
+             if (strcmp((char*)buf, "cmd7") == 0) {
+                ESP_LOGI(TAG, "Z+ получена");
+
+                directionZ = 1;
+
+                }
+            if (strcmp((char*)buf, "cmd8") == 0) {
+                ESP_LOGI(TAG, "Z- получена");
+
+                directionZ = 2;
+
+
+            }
+            if (strcmp((char*)buf, "cmd9") == 0) {
+                ESP_LOGI(TAG, "Z stop получена");
+
+                directionZ = 0;
 
             }
         }
@@ -190,13 +246,12 @@ static httpd_handle_t start_webserver(void)
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
     if (httpd_start(&server, &config) == ESP_OK) {
         ESP_LOGI(TAG, "Creating mutex");
-        ws_mutex = xSemaphoreCreateMutex();
-        configASSERT(ws_mutex);
-        // Registering the ws handler
         ESP_LOGI(TAG, "Registering URI handlers");
         httpd_register_uri_handler(server, &ws);
         httpd_register_uri_handler(server, &any);
-        xTaskCreate(stepper, "ws_sender", 8192, NULL, 5, NULL);
+        xTaskCreate(stepperX, "ws_sender", 2048, NULL, 8, NULL);
+        xTaskCreate(stepperY, "ws_sender2", 2048, NULL, 8, NULL);
+        xTaskCreate(stepperZ, "ws_sender3", 2048, NULL, 8, NULL);
         return server;
     }
 
@@ -206,22 +261,30 @@ static httpd_handle_t start_webserver(void)
 
 void init_gpio(void)
 {
-    // Конфигурируем оба пина одновременно
+    // Маска для всех 6 пинов (X, Y, Z оси)
     gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << DIR_PIN) | (1ULL << STEP_PIN),  // Оба пина
-        .mode = GPIO_MODE_OUTPUT,                                  // Режим выхода
+        .pin_bit_mask = 
+            (1ULL << DIR_PIN_X)  | (1ULL << STEP_PIN_X) |
+            (1ULL << DIR_PIN_Y)  | (1ULL << STEP_PIN_Y) |
+            (1ULL << DIR_PIN_Z)  | (1ULL << STEP_PIN_Z),
+        .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE                            // Без прерываний
+        .intr_type = GPIO_INTR_DISABLE
     };
     
     ESP_ERROR_CHECK(gpio_config(&io_conf));
     
-    // Инициализируем уровнем LOW
-    gpio_set_level(DIR_PIN, 0);
-    gpio_set_level(STEP_PIN, 0);
+    // Инициализируем все пины уровнем LOW
+    gpio_set_level(DIR_PIN_X, 0);
+    gpio_set_level(STEP_PIN_X, 0);
+    gpio_set_level(DIR_PIN_Y, 0);
+    gpio_set_level(STEP_PIN_Y, 0);
+    gpio_set_level(DIR_PIN_Z, 0);
+    gpio_set_level(STEP_PIN_Z, 0);
     
-    ESP_LOGI(TAG, "GPIO инициализирован: DIR=%d, STEP=%d", DIR_PIN, STEP_PIN);
+    ESP_LOGI(TAG, "GPIO инициализирован: X(DIR=%d,STEP=%d), Y(DIR=%d,STEP=%d), Z(DIR=%d,STEP=%d)", 
+             DIR_PIN_X, STEP_PIN_X, DIR_PIN_Y, STEP_PIN_Y, DIR_PIN_Z, STEP_PIN_Z);
 }
 
 void app_main(void)
